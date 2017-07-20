@@ -5,23 +5,36 @@ product_key: chefdk
 slack:
   notify_channel: chef-notify
 
-# When a version of ChefDK hits the current channel, build a corresponding Docker image
-# and publish that image to https://hub.docker.com/r/chef/chefdk
-docker:
-  enable: true
-  build_args:
-    CHANNEL: "{{channel}}"
-    VERSION: "{{version}}"
+rubygems:
+  - chef-dk
 
 github:
   version_tag_format: "v{{version}}"
   maintainer_group: chef/client-core
+  release_branch:
+    master:
+      version_constraint: ~> 2.0
+    chefdk-1:
+      version_constraint: ~> 1.0
 
 merge_actions:
   built_in:bump_version:
     ignore_labels: "Version: Skip Bump"
   bash:.expeditor/update_version.sh:
     only_if: built_in:bump_version
+  built_in:update_changelog:
+    ignore_labels: "Meta: Exclude From Changelog"
   built_in:trigger_omnibus_release_build:
     ignore_labels: "Omnibus: Skip Build"
     only_if: built_in:bump_version
+
+artifact_actions:
+  promoted_to_unstable:
+    built_in:build_docker_image:
+  promoted_to_current:
+    built_in:tag_docker_image:
+  promoted_to_stable:
+    built_in:tag_docker_image:
+    built_in:publish_rubygems:
+    built_in:rollover_changelog:
+    bash:.expeditor/update_dockerfile.sh:
